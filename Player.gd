@@ -1,0 +1,61 @@
+extends Area2D
+
+signal hit
+
+#export keyword allows us to set it in the inspector
+@export var speed = 400
+var screen_size
+
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	screen_size = get_viewport_rect().size
+	#hide the player at the beginning of the game
+	#hide()
+
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(delta):
+	var velocity = Vector2.ZERO
+	
+	if Input.is_action_pressed("move_right"):
+		velocity.x += 1
+	if Input.is_action_pressed("move_left"):
+		velocity.x -= 1
+	if Input.is_action_pressed("move_down"):
+		velocity.y += 1
+	if Input.is_action_pressed("move_up"):
+		velocity.y -= 1
+	
+	#normalized speed means diagonal movement is the same speed as orthagonal
+	if velocity.length() > 0:
+		velocity = velocity.normalized() * speed
+		# $relativenodefromcurrent
+		# line below is shorthand for get_node("AnimatedSprite2D").play()
+		$AnimatedSprite2D.play()
+	else:
+		$AnimatedSprite2D.stop()
+		
+	#clamping prevents this node from leaving the screen
+	position += velocity * delta
+	position.x = clamp(position.x, 0, screen_size.x)
+	position.y = clamp(position.y, 0, screen_size.y)
+	
+	if velocity.x != 0:
+		$AnimatedSprite2D.animation = "walk"
+		$AnimatedSprite2D.flip_v = false
+		#boolean short hand
+		$AnimatedSprite2D.flip_h = velocity.x < 0
+	elif velocity.y != 0:
+		$AnimatedSprite2D.animation = "up"
+		$AnimatedSprite2D.flip_v = velocity.y > 0
+
+func start(pos):
+	position = pos
+	show()
+	$CollisionShape2D.disabled = false
+
+func _on_body_entered(body):
+	hide() #ow! hide player on hit so signal only triggers once
+	hit.emit()
+	# Must be deferred as we can't change physics properties on a physics callback (why?)
+	$CollisionShape2D.set_deferred("disabled", true)
